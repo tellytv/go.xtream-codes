@@ -68,11 +68,11 @@ func NewClient(username, password, baseURL string) (*XtreamClient, error) {
 func (c *XtreamClient) GetStreamURL(streamID int, wantedFormat string) (string, error) {
 
 	// For Live Streams the main format is
-	// http(s)://domain:port/live/username/password/streamID.ext ( In  allowed_output_formats element you have the available ext )
+	// http(s)://domain:port/live/username/password/streamID.ext ( In allowed_output_formats element you have the available ext )
 	// For VOD Streams the format is:
-	// http(s)://domain:port/movie/username/password/streamID.ext ( In  target_container element you have the available ext )
+	// http(s)://domain:port/movie/username/password/streamID.ext ( In target_container element you have the available ext )
 	// For Series Streams the format is
-	// http(s)://domain:port/series/username/password/streamID.ext ( In  target_container element you have the available ext )
+	// http(s)://domain:port/series/username/password/streamID.ext ( In target_container element you have the available ext )
 
 	validFormat := false
 
@@ -97,20 +97,20 @@ func (c *XtreamClient) GetStreamURL(streamID int, wantedFormat string) (string, 
 
 // GetLiveCategories will return a slice of categories for live streams.
 func (c *XtreamClient) GetLiveCategories() ([]Category, error) {
-	return c.getCategories("live")
+	return c.GetCategories("live")
 }
 
 // GetVideoOnDemandCategories will return a slice of categories for VOD streams.
 func (c *XtreamClient) GetVideoOnDemandCategories() ([]Category, error) {
-	return c.getCategories("vod")
+	return c.GetCategories("vod")
 }
 
 // GetSeriesCategories will return a slice of categories for series streams.
 func (c *XtreamClient) GetSeriesCategories() ([]Category, error) {
-	return c.getCategories("series")
+	return c.GetCategories("series")
 }
 
-func (c *XtreamClient) getCategories(catType string) ([]Category, error) {
+func (c *XtreamClient) GetCategories(catType string) ([]Category, error) {
 	_, catData, catErr := c.sendRequest(fmt.Sprintf("get_%s_categories", catType), nil)
 	if catErr != nil {
 		return nil, catErr
@@ -120,45 +120,59 @@ func (c *XtreamClient) getCategories(catType string) ([]Category, error) {
 
 	jsonErr := json.Unmarshal(catData, &cats)
 
+	for idx, _ := range cats {
+		cats[idx].Type = catType
+	}
+
 	return cats, jsonErr
 }
 
-// GetLiveStreams will return a slice of live streams. You can also optionally provide a categoryID to limit the output to members of that category.
+// GetLiveStreams will return a slice of live streams.
+// You can also optionally provide a categoryID to limit the output to members of that category.
 func (c *XtreamClient) GetLiveStreams(categoryID string) ([]Stream, error) {
-	return c.getStreams("live", categoryID)
+	return c.GetStreams("live", categoryID)
 }
 
-// GetVideoOnDemandStreams will return a slice of VOD streams. You can also optionally provide a categoryID to limit the output to members of that category.
+// GetVideoOnDemandStreams will return a slice of VOD streams.
+// You can also optionally provide a categoryID to limit the output to members of that category.
 func (c *XtreamClient) GetVideoOnDemandStreams(categoryID string) ([]Stream, error) {
-	return c.getStreams("vod", categoryID)
+	return c.GetStreams("vod", categoryID)
 }
 
-// GetSeriesStreams will return a slice of series streams. You can also optionally provide a categoryID to limit the output to members of that category.
+// GetSeriesStreams will return a slice of series streams.
+// You can also optionally provide a categoryID to limit the output to members of that category.
 func (c *XtreamClient) GetSeriesStreams(categoryID string) ([]Stream, error) {
-	return c.getStreams("series", categoryID)
+	return c.GetStreams("series", categoryID)
 }
 
-func (c *XtreamClient) getStreams(streamType, categoryID string) ([]Stream, error) {
+func (c *XtreamClient) GetStreams(streamAction, categoryID string) ([]Stream, error) {
 	var params url.Values
 	if categoryID != "" {
 		params = url.Values{}
 		params.Add("category_id", categoryID)
 	}
 
-	_, streamData, streamErr := c.sendRequest(fmt.Sprintf("get_%s_streams", streamType), params)
+	// For whatever reason, unlike live and vod, series streams action doesn't have "_streams".
+	if streamAction != "series" {
+		streamAction = fmt.Sprintf("%s_streams", streamAction)
+	}
+
+	_, streamData, streamErr := c.sendRequest(fmt.Sprintf("get_%s", streamAction), params)
 	if streamErr != nil {
 		return nil, streamErr
 	}
 
 	streams := make([]Stream, 0)
 
-	jsonErr := json.Unmarshal(streamData, &streams)
+	if jsonErr := json.Unmarshal(streamData, &streams); jsonErr != nil {
+		return nil, jsonErr
+	}
 
 	for _, stream := range streams {
 		c.streams[stream.ID] = stream
 	}
 
-	return streams, jsonErr
+	return streams, nil
 }
 
 // GetSeriesInfo will return a series info for the given seriesID.

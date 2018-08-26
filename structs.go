@@ -1,6 +1,7 @@
 package xtreamcodes
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -11,16 +12,21 @@ import (
 // Timestamp is a helper struct to convert unix timestamp ints and strings to time.Time.
 type Timestamp struct {
 	time.Time
+	quoted bool
 }
 
 // MarshalJSON returns the Unix timestamp as a string.
-func (t *Timestamp) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprint(t.Time.Unix())), nil
+func (t Timestamp) MarshalJSON() ([]byte, error) {
+	if t.quoted {
+		return []byte(`"` + strconv.FormatInt(t.Time.Unix(), 10) + `"`), nil
+	}
+	return []byte(strconv.FormatInt(t.Time.Unix(), 10)), nil
 }
 
 // UnmarshalJSON converts the int or string to a Unix timestamp.
 func (t *Timestamp) UnmarshalJSON(b []byte) error {
 	// Timestamps are sometimes quoted, sometimes not, lets just always remove quotes just in case...
+	t.quoted = strings.Contains(string(b), `"`)
 	ts, err := strconv.Atoi(strings.Replace(string(b), `"`, "", -1))
 	if err != nil {
 		return err
@@ -35,8 +41,8 @@ type Timezone struct {
 }
 
 // MarshalJSON returns the time.Location name as a string.
-func (t *Timezone) MarshalJSON() ([]byte, error) {
-	return []byte(t.Location.String()), nil
+func (t Timezone) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + t.Location.String() + `"`), nil
 }
 
 // UnmarshalJSON converts a JSON string to a time.Location.
@@ -54,13 +60,20 @@ func (t *Timezone) UnmarshalJSON(b []byte) error {
 }
 
 // ConvertibleBoolean is a helper type to allow JSON documents using 0/1 or "true" and "false" be converted to bool.
-type ConvertibleBoolean bool
+type ConvertibleBoolean struct {
+	bool
+	quoted bool
+}
 
 // MarshalJSON returns a 0 or 1 depending on bool state.
-func (bit *ConvertibleBoolean) MarshalJSON() ([]byte, error) {
+func (bit ConvertibleBoolean) MarshalJSON() ([]byte, error) {
 	var bitSetVar int8
-	if *bit {
+	if bit.bool {
 		bitSetVar = 1
+	}
+
+	if bit.quoted {
+		return json.Marshal(fmt.Sprint(bitSetVar))
 	}
 
 	return json.Marshal(bitSetVar)
@@ -68,16 +81,38 @@ func (bit *ConvertibleBoolean) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON converts a 0, 1, true or false into a bool
 func (bit *ConvertibleBoolean) UnmarshalJSON(data []byte) error {
+	bit.quoted = strings.Contains(string(data), `"`)
 	// Bools as ints are sometimes quoted, sometimes not, lets just always remove quotes just in case...
 	asString := strings.Replace(string(data), `"`, "", -1)
 	if asString == "1" || asString == "true" {
-		*bit = true
+		bit.bool = true
 	} else if asString == "0" || asString == "false" {
-		*bit = false
+		bit.bool = false
 	} else {
 		return fmt.Errorf("Boolean unmarshal error: invalid input %s", asString)
 	}
 	return nil
+}
+
+// jsonInt is a int64 which unmarshals from JSON
+// as either unquoted or quoted (with any amount
+// of internal leading/trailing whitespace).
+// Originally found at https://bit.ly/2NkJ0SK and
+// https://play.golang.org/p/KNPxDL1yqL
+type jsonInt int64
+
+func (f jsonInt) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int64(f))
+}
+
+func (f *jsonInt) UnmarshalJSON(data []byte) error {
+	var v int64
+
+	data = bytes.Trim(data, `" `)
+
+	err := json.Unmarshal(data, &v)
+	*f = jsonInt(v)
+	return err
 }
 
 // ServerInfo describes the state of the Xtream-Codes server.
@@ -88,7 +123,7 @@ type ServerInfo struct {
 	RTMPPort     int       `json:"rtmp_port,string"`
 	Protocol     string    `json:"server_protocol"`
 	TimeNow      string    `json:"time_now"`
-	TimestampNow Timestamp `json:"timestamp_now"`
+	TimestampNow Timestamp `json:"timestamp_now,string"`
 	Timezone     Timezone  `json:"timezone"`
 	URL          string    `json:"url"`
 }
@@ -99,8 +134,8 @@ type UserInfo struct {
 	AllowedOutputFormats []string           `json:"allowed_output_formats"`
 	Auth                 ConvertibleBoolean `json:"auth"`
 	CreatedAt            Timestamp          `json:"created_at"`
-	ExpDate              Timestamp          `json:"exp_date"`
-	IsTrial              ConvertibleBoolean `json:"is_trial"`
+	ExpDate              *Timestamp         `json:"exp_date"`
+	IsTrial              ConvertibleBoolean `json:"is_trial,string"`
 	MaxConnections       int                `json:"max_connections,string"`
 	Message              string             `json:"message"`
 	Password             string             `json:"password"`
@@ -119,6 +154,9 @@ type Category struct {
 	ID     int    `json:"category_id,string"`
 	Name   string `json:"category_name"`
 	Parent int    `json:"parent_id"`
+
+	// Set by us, not Xtream.
+	Type string `json:"-"`
 }
 
 // Stream is a streamble video source.
@@ -133,32 +171,32 @@ type Stream struct {
 	ID                 int       `json:"stream_id"`
 	Name               string    `json:"name"`
 	Number             int       `json:"num"`
-	Rating             string    `json:"rating"`
-	Rating5based       int       `json:"rating_5based"`
+	Rating             int       `json:"rating,string"`
+	Rating5based       float64   `json:"rating_5based"`
 	TVArchive          int       `json:"tv_archive"`
-	TVArchiveDuration  int       `json:"tv_archive_duration"`
+	TVArchiveDuration  jsonInt   `json:"tv_archive_duration"`
 	Type               string    `json:"stream_type"`
 }
 
 // SeriesInfo contains information about a TV series.
 type SeriesInfo struct {
-	BackdropPath   string    `json:"backdrop_path"`
-	Cast           string    `json:"cast"`
-	CategoryID     int       `json:"category_id,string"`
-	Cover          string    `json:"cover"`
-	Director       string    `json:"director"`
-	EpisodeRunTime string    `json:"episode_run_time"`
-	Genre          string    `json:"genre"`
-	LastModified   Timestamp `json:"last_modified"`
-	Name           string    `json:"name"`
-	Num            int       `json:"num"`
-	Plot           string    `json:"plot"`
-	Rating         int       `json:"rating,string"`
-	Rating5        int       `json:"rating_5based"`
-	ReleaseDate    string    `json:"releaseDate"`
-	SeriesID       int       `json:"series_id"`
-	StreamType     string    `json:"stream_type"`
-	YoutubeTrailer string    `json:"youtube_trailer"`
+	BackdropPath   JSONStringSlice `json:"backdrop_path"`
+	Cast           string          `json:"cast"`
+	CategoryID     int             `json:"category_id,string"`
+	Cover          string          `json:"cover"`
+	Director       string          `json:"director"`
+	EpisodeRunTime string          `json:"episode_run_time"`
+	Genre          string          `json:"genre"`
+	LastModified   Timestamp       `json:"last_modified"`
+	Name           string          `json:"name"`
+	Num            int             `json:"num"`
+	Plot           string          `json:"plot"`
+	Rating         int             `json:"rating,string"`
+	Rating5        int             `json:"rating_5based"`
+	ReleaseDate    string          `json:"releaseDate"`
+	SeriesID       int             `json:"series_id"`
+	StreamType     string          `json:"stream_type"`
+	YoutubeTrailer string          `json:"youtube_trailer"`
 }
 
 // VideoOnDemandInfo contains information about a video on demand stream.
@@ -209,4 +247,26 @@ type EPGInfo struct {
 	StartTimestamp Timestamp          `json:"start_timestamp"`
 	StopTimestamp  Timestamp          `json:"stop_timestamp"`
 	Title          Base64Value        `json:"title"`
+}
+
+type JSONStringSlice struct {
+	Slice        []string `json:"-"`
+	SingleString bool     `json:"-"`
+}
+
+func (b JSONStringSlice) MarshalJSON() ([]byte, error) {
+	if !b.SingleString {
+		return json.Marshal(b.Slice)
+	}
+	return json.Marshal(b.Slice[0])
+}
+
+func (b *JSONStringSlice) UnmarshalJSON(data []byte) error {
+	if data[0] == '"' {
+		data = append([]byte(`[`), data...)
+		data = append(data, []byte(`]`)...)
+		b.SingleString = true
+	}
+
+	return json.Unmarshal(data, &b.Slice)
 }
