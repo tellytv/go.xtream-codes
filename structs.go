@@ -171,8 +171,8 @@ type Stream struct {
 	ID                 int       `json:"stream_id"`
 	Name               string    `json:"name"`
 	Number             int       `json:"num"`
-	Rating             int       `json:"rating,string"`
-	Rating5based       float64   `json:"rating_5based"`
+	Rating             string    `json:"rating"`
+	Rating5based       int64     `json:"rating_5based"`
 	TVArchive          int       `json:"tv_archive"`
 	TVArchiveDuration  jsonInt   `json:"tv_archive_duration"`
 	Type               string    `json:"stream_type"`
