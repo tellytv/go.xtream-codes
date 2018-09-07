@@ -29,5 +29,8 @@
   "Sort": [
     "path",
     "linter"
+  ],
+  "Exclude": [
+    ".*gopkg.in/onsi/gomega.v1.*"
   ]
 }
