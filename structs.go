@@ -161,42 +161,71 @@ type Category struct {
 
 // Stream is a streamble video source.
 type Stream struct {
-	Added              Timestamp `json:"added"`
-	CategoryID         int       `json:"category_id,string"`
-	ContainerExtension string    `json:"container_extension"`
-	CustomSid          string    `json:"custom_sid"`
-	DirectSource       string    `json:"direct_source"`
-	EPGChannelID       string    `json:"epg_channel_id"`
-	Icon               string    `json:"stream_icon"`
-	ID                 int       `json:"stream_id"`
-	Name               string    `json:"name"`
-	Number             int       `json:"num"`
-	Rating             string    `json:"rating"`
-	Rating5based       int64     `json:"rating_5based"`
-	TVArchive          int       `json:"tv_archive"`
-	TVArchiveDuration  jsonInt   `json:"tv_archive_duration"`
-	Type               string    `json:"stream_type"`
+	Added              *Timestamp `json:"added"`
+	CategoryID         int        `json:"category_id,string"`
+	ContainerExtension string     `json:"container_extension"`
+	CustomSid          string     `json:"custom_sid"`
+	DirectSource       string     `json:"direct_source,omitempty"`
+	EPGChannelID       string     `json:"epg_channel_id"`
+	Icon               string     `json:"stream_icon"`
+	ID                 int        `json:"stream_id"`
+	Name               string     `json:"name"`
+	Number             int        `json:"num"`
+	Rating             string     `json:"rating"`
+	Rating5based       float64    `json:"rating_5based"`
+	TVArchive          int        `json:"tv_archive"`
+	TVArchiveDuration  *jsonInt   `json:"tv_archive_duration"`
+	Type               string     `json:"stream_type"`
 }
 
 // SeriesInfo contains information about a TV series.
 type SeriesInfo struct {
-	BackdropPath   JSONStringSlice `json:"backdrop_path"`
-	Cast           string          `json:"cast"`
-	CategoryID     int             `json:"category_id,string"`
-	Cover          string          `json:"cover"`
-	Director       string          `json:"director"`
-	EpisodeRunTime string          `json:"episode_run_time"`
-	Genre          string          `json:"genre"`
-	LastModified   Timestamp       `json:"last_modified"`
-	Name           string          `json:"name"`
-	Num            int             `json:"num"`
-	Plot           string          `json:"plot"`
-	Rating         int             `json:"rating,string"`
-	Rating5        int             `json:"rating_5based"`
-	ReleaseDate    string          `json:"releaseDate"`
-	SeriesID       int             `json:"series_id"`
-	StreamType     string          `json:"stream_type"`
-	YoutubeTrailer string          `json:"youtube_trailer"`
+	BackdropPath   *JSONStringSlice `json:"backdrop_path,omitempty"`
+	Cast           string           `json:"cast"`
+	CategoryID     *int             `json:"category_id,string"`
+	Cover          string           `json:"cover"`
+	Director       string           `json:"director"`
+	EpisodeRunTime string           `json:"episode_run_time"`
+	Genre          string           `json:"genre"`
+	LastModified   *Timestamp       `json:"last_modified,omitempty"`
+	Name           string           `json:"name"`
+	Num            int              `json:"num"`
+	Plot           string           `json:"plot"`
+	Rating         int              `json:"rating,string"`
+	Rating5        float64          `json:"rating_5based"`
+	ReleaseDate    string           `json:"releaseDate"`
+	SeriesID       int              `json:"series_id"`
+	StreamType     string           `json:"stream_type"`
+	YoutubeTrailer string           `json:"youtube_trailer"`
+}
+
+type SeriesEpisode struct {
+	Added              string `json:"added"`
+	ContainerExtension string `json:"container_extension"`
+	CustomSid          string `json:"custom_sid"`
+	DirectSource       string `json:"direct_source"`
+	EpisodeNum         int    `json:"episode_num"`
+	ID                 string `json:"id"`
+	Info               struct {
+		Audio        FFMPEGStreamInfo `json:"audio"`
+		Bitrate      int              `json:"bitrate"`
+		Duration     string           `json:"duration"`
+		DurationSecs int              `json:"duration_secs"`
+		MovieImage   string           `json:"movie_image"`
+		Name         string           `json:"name"`
+		Plot         string           `json:"plot"`
+		Rating       string           `json:"rating"`
+		ReleaseDate  string           `json:"releasedate"`
+		Video        FFMPEGStreamInfo `json:"video"`
+	} `json:"info"`
+	Season int    `json:"season"`
+	Title  string `json:"title"`
+}
+
+type Series struct {
+	Episodes map[string][]SeriesEpisode `json:"episodes"`
+	Info     SeriesInfo                 `json:"info"`
+	Seasons  []interface{}              `json:"seasons"`
 }
 
 // VideoOnDemandInfo contains information about a video on demand stream.
@@ -213,7 +242,7 @@ type VideoOnDemandInfo struct {
 		MovieImage     string           `json:"movie_image"`
 		Plot           string           `json:"plot"`
 		Rating         string           `json:"rating"`
-		Releasedate    string           `json:"releasedate"`
+		ReleaseDate    string           `json:"releasedate"`
 		TmdbID         string           `json:"tmdb_id"`
 		Video          FFMPEGStreamInfo `json:"video"`
 		YoutubeTrailer string           `json:"youtube_trailer"`
@@ -249,11 +278,15 @@ type EPGInfo struct {
 	Title          Base64Value        `json:"title"`
 }
 
+// JSONStringSlice is a struct containing a slice of strings.
+// It is needed for cases in which we may get an array or may get
+// a single string in a JSON response.
 type JSONStringSlice struct {
 	Slice        []string `json:"-"`
 	SingleString bool     `json:"-"`
 }
 
+// MarshalJSON returns b as the JSON encoding of b.
 func (b JSONStringSlice) MarshalJSON() ([]byte, error) {
 	if !b.SingleString {
 		return json.Marshal(b.Slice)
@@ -261,6 +294,7 @@ func (b JSONStringSlice) MarshalJSON() ([]byte, error) {
 	return json.Marshal(b.Slice[0])
 }
 
+// UnmarshalJSON sets *b to a copy of data.
 func (b *JSONStringSlice) UnmarshalJSON(data []byte) error {
 	if data[0] == '"' {
 		data = append([]byte(`[`), data...)

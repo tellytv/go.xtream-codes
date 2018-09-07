@@ -47,7 +47,7 @@ func NewClient(username, password, baseURL string) (*XtreamClient, error) {
 		streams: make(map[int]Stream),
 	}
 
-	_, authData, authErr := client.sendRequest("", nil)
+	authData, authErr := client.sendRequest("", nil)
 	if authErr != nil {
 		return nil, fmt.Errorf("error sending authentication request: %s", authErr.Error())
 	}
@@ -110,8 +110,10 @@ func (c *XtreamClient) GetSeriesCategories() ([]Category, error) {
 	return c.GetCategories("series")
 }
 
+// GetCategories is a helper function used by GetLiveCategories, GetVideoOnDemandCategories and
+// GetSeriesCategories to reduce duplicate code.
 func (c *XtreamClient) GetCategories(catType string) ([]Category, error) {
-	_, catData, catErr := c.sendRequest(fmt.Sprintf("get_%s_categories", catType), nil)
+	catData, catErr := c.sendRequest(fmt.Sprintf("get_%s_categories", catType), nil)
 	if catErr != nil {
 		return nil, catErr
 	}
@@ -120,7 +122,7 @@ func (c *XtreamClient) GetCategories(catType string) ([]Category, error) {
 
 	jsonErr := json.Unmarshal(catData, &cats)
 
-	for idx, _ := range cats {
+	for idx := range cats {
 		cats[idx].Type = catType
 	}
 
@@ -139,12 +141,8 @@ func (c *XtreamClient) GetVideoOnDemandStreams(categoryID string) ([]Stream, err
 	return c.GetStreams("vod", categoryID)
 }
 
-// GetSeriesStreams will return a slice of series streams.
-// You can also optionally provide a categoryID to limit the output to members of that category.
-func (c *XtreamClient) GetSeriesStreams(categoryID string) ([]Stream, error) {
-	return c.GetStreams("series", categoryID)
-}
-
+// GetStreams is a helper function used by GetLiveStreams and GetVideoOnDemandStreams
+// to reduce duplicate code.
 func (c *XtreamClient) GetStreams(streamAction, categoryID string) ([]Stream, error) {
 	var params url.Values
 	if categoryID != "" {
@@ -157,7 +155,7 @@ func (c *XtreamClient) GetStreams(streamAction, categoryID string) ([]Stream, er
 		streamAction = fmt.Sprintf("%s_streams", streamAction)
 	}
 
-	_, streamData, streamErr := c.sendRequest(fmt.Sprintf("get_%s", streamAction), params)
+	streamData, streamErr := c.sendRequest(fmt.Sprintf("get_%s", streamAction), params)
 	if streamErr != nil {
 		return nil, streamErr
 	}
@@ -175,18 +173,41 @@ func (c *XtreamClient) GetStreams(streamAction, categoryID string) ([]Stream, er
 	return streams, nil
 }
 
-// GetSeriesInfo will return a series info for the given seriesID.
-func (c *XtreamClient) GetSeriesInfo(seriesID string) (*SeriesInfo, error) {
-	if seriesID == "" {
-		return nil, fmt.Errorf("series ID can not be empty")
+// GetSeries will return a slice of all available Series.
+// You can also optionally provide a categoryID to limit the output to members of that category.
+func (c *XtreamClient) GetSeries(categoryID string) ([]SeriesInfo, error) {
+	var params url.Values
+	if categoryID != "" {
+		params = url.Values{}
+		params.Add("category_id", categoryID)
 	}
 
-	_, seriesData, seriesErr := c.sendRequest("get_series_info", url.Values{"series_id": []string{seriesID}})
+	seriesData, seriesErr := c.sendRequest("get_series", params)
 	if seriesErr != nil {
 		return nil, seriesErr
 	}
 
-	seriesInfo := &SeriesInfo{}
+	seriesInfos := make([]SeriesInfo, 0)
+
+	if jsonErr := json.Unmarshal(seriesData, &seriesInfos); jsonErr != nil {
+		return nil, jsonErr
+	}
+
+	return seriesInfos, nil
+}
+
+// GetSeriesInfo will return a series info for the given seriesID.
+func (c *XtreamClient) GetSeriesInfo(seriesID string) (*Series, error) {
+	if seriesID == "" {
+		return nil, fmt.Errorf("series ID can not be empty")
+	}
+
+	seriesData, seriesErr := c.sendRequest("get_series_info", url.Values{"series_id": []string{seriesID}})
+	if seriesErr != nil {
+		return nil, seriesErr
+	}
+
+	seriesInfo := &Series{}
 
 	jsonErr := json.Unmarshal(seriesData, &seriesInfo)
 
@@ -199,7 +220,7 @@ func (c *XtreamClient) GetVideoOnDemandInfo(vodID string) (*VideoOnDemandInfo, e
 		return nil, fmt.Errorf("vod ID can not be empty")
 	}
 
-	_, vodData, vodErr := c.sendRequest("get_vod_info", url.Values{"vod_id": []string{vodID}})
+	vodData, vodErr := c.sendRequest("get_vod_info", url.Values{"vod_id": []string{vodID}})
 	if vodErr != nil {
 		return nil, vodErr
 	}
@@ -223,7 +244,7 @@ func (c *XtreamClient) GetEPG(streamID string) ([]EPGInfo, error) {
 
 // GetXMLTV will return a slice of bytes for the XMLTV EPG file available from the provider.
 func (c *XtreamClient) GetXMLTV() ([]byte, error) {
-	_, xmlTVData, xmlTVErr := c.sendRequest("xmltv.php", nil)
+	xmlTVData, xmlTVErr := c.sendRequest("xmltv.php", nil)
 	if xmlTVErr != nil {
 		return nil, xmlTVErr
 	}
@@ -241,7 +262,7 @@ func (c *XtreamClient) getEPG(action, streamID string, limit int) ([]EPGInfo, er
 		params.Add("limit", strconv.Itoa(limit))
 	}
 
-	_, epgData, epgErr := c.sendRequest(action, params)
+	epgData, epgErr := c.sendRequest(action, params)
 	if epgErr != nil {
 		return nil, epgErr
 	}
@@ -253,7 +274,7 @@ func (c *XtreamClient) getEPG(action, streamID string, limit int) ([]EPGInfo, er
 	return epgContainer.EPGListings, jsonErr
 }
 
-func (c *XtreamClient) sendRequest(action string, parameters url.Values) (*http.Response, []byte, error) {
+func (c *XtreamClient) sendRequest(action string, parameters url.Values) ([]byte, error) {
 	file := "player_api.php"
 	if action == "xmltv.php" {
 		file = action
@@ -268,28 +289,28 @@ func (c *XtreamClient) sendRequest(action string, parameters url.Values) (*http.
 
 	request, httpErr := http.NewRequest("GET", url, nil)
 	if httpErr != nil {
-		return nil, nil, httpErr
+		return nil, httpErr
 	}
 
 	request.Header.Set("User-Agent", userAgent)
 
 	response, httpErr := c.HTTP.Do(request)
 	if httpErr != nil {
-		return nil, nil, fmt.Errorf("cannot reach server. %v", httpErr)
+		return nil, fmt.Errorf("cannot reach server. %v", httpErr)
 	}
 
 	if response.StatusCode > 399 {
-		return nil, nil, fmt.Errorf("status code was %d, expected 2XX-3XX", response.StatusCode)
+		return nil, fmt.Errorf("status code was %d, expected 2XX-3XX", response.StatusCode)
 	}
 
 	buf := &bytes.Buffer{}
 	if _, copyErr := io.Copy(buf, response.Body); copyErr != nil {
-		return nil, nil, copyErr
+		return nil, copyErr
 	}
 
 	if closeErr := response.Body.Close(); closeErr != nil {
-		return nil, nil, fmt.Errorf("cannot read response. %v", closeErr)
+		return nil, fmt.Errorf("cannot read response. %v", closeErr)
 	}
 
-	return response, buf.Bytes(), nil
+	return buf.Bytes(), nil
 }

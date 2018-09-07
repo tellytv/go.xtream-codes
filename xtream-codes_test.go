@@ -14,29 +14,34 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/onsi/gomega"
 )
 
 var expectedContents = make(map[string]map[string][]byte)
 var types = []string{"live", "vod", "series"}
 var tsURL string
 
-func TestMain(m *testing.M) {
-	if err := filepath.Walk("testData", func(path string, f os.FileInfo, err error) error {
-		if f.IsDir() || f.Name() == "testData" {
-			return nil
-		}
-		bytes, err := ioutil.ReadFile(path) // path is the path to the file.
-		if err != nil {
-			return err
-		}
-		splitPath := strings.Split(path, "/")
-		if expectedContents[f.Name()] == nil {
-			expectedContents[f.Name()] = make(map[string][]byte)
-		}
-		expectedContents[f.Name()][splitPath[1]] = bytes
+func walkFunc(path string, f os.FileInfo, err error) error {
+	if err != nil {
+		return err
+	}
+	if f.IsDir() || f.Name() == "testData" {
 		return nil
-	}); err != nil {
+	}
+	bytes, err := ioutil.ReadFile(path) // path is the path to the file.
+	if err != nil {
+		return err
+	}
+	splitPath := strings.Split(path, "/")
+	if expectedContents[f.Name()] == nil {
+		expectedContents[f.Name()] = make(map[string][]byte)
+	}
+	expectedContents[f.Name()][splitPath[1]] = bytes
+	return nil
+}
+
+func TestMain(m *testing.M) {
+	if err := filepath.Walk("testData/iris", walkFunc); err != nil {
 		panic(err)
 	}
 
@@ -80,7 +85,9 @@ func TestNewClient(t *testing.T) {
 				return
 			}
 
-			assert.JSONEq(t, string(expectedContent), string(marshalled))
+			g := gomega.NewGomegaWithT(t)
+
+			g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
 		})
 	}
 }
@@ -109,7 +116,9 @@ func TestGetCategories(t *testing.T) {
 						return
 					}
 
-					assert.JSONEq(t, string(expectedContent), string(marshalled))
+					g := gomega.NewGomegaWithT(t)
+
+					g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
 
 					t.Logf("Got %s categories from %s successfully!", xType, providerName)
 				})
@@ -121,11 +130,11 @@ func TestGetCategories(t *testing.T) {
 func TestGetStreams(t *testing.T) {
 	for _, xType := range types {
 		t.Run(xType, func(t *testing.T) {
+			if xType == "series" {
+				return
+			}
 			t.Parallel()
 			filePath := fmt.Sprintf("get_%s_streams.json", xType)
-			if xType == "series" {
-				filePath = fmt.Sprintf("get_%s.json", xType)
-			}
 			for providerName, expectedContent := range expectedContents[filePath] {
 				t.Run(providerName, func(t *testing.T) {
 					t.Parallel()
@@ -149,7 +158,9 @@ func TestGetStreams(t *testing.T) {
 
 					t.Logf("Calling assert.JSONEq for %s streams from %s", xType, providerName)
 
-					assert.JSONEq(t, string(expectedContent), string(marshalled))
+					g := gomega.NewGomegaWithT(t)
+
+					g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
 
 					t.Logf("Got %s streams from %s successfully!", xType, providerName)
 				})
@@ -158,7 +169,43 @@ func TestGetStreams(t *testing.T) {
 	}
 }
 
+func TestGetSeries(t *testing.T) {
+	for providerName, expectedContent := range expectedContents["get_series.json"] {
+		t.Run(providerName, func(t *testing.T) {
+			t.Parallel()
+			xc := getClient(t, providerName)
+
+			streams, streamsErr := xc.GetSeries("")
+			if streamsErr != nil {
+				t.Errorf("error getting series: %s", streamsErr)
+				t.Fail()
+				return
+			}
+
+			t.Logf("Calling json.Marshal for series from %s", providerName)
+
+			marshalled, marshalErr := json.Marshal(streams)
+			if marshalErr != nil {
+				t.Errorf("error marshalling series response back to json: %s", marshalErr)
+				t.Fail()
+				return
+			}
+
+			t.Logf("Calling assert.JSONEq for series from %s", providerName)
+
+			t.Logf("%s\n\n\n%s", string(expectedContent), string(marshalled))
+
+			g := gomega.NewGomegaWithT(t)
+
+			g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
+
+			t.Logf("Got series from %s successfully!", providerName)
+		})
+	}
+}
+
 func getClient(t *testing.T, providerName string) *XtreamClient {
+	t.Helper()
 	xc, xcErr := NewClient(fmt.Sprintf("%s_USERNAME", strings.ToUpper(providerName)), fmt.Sprintf("%s_PASSWORD", strings.ToUpper(providerName)), tsURL)
 	if xcErr != nil {
 		t.Errorf("NewClient() returned an error: %s", xcErr)

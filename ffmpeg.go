@@ -170,12 +170,12 @@ func NewInfo(jsonData string) (*ProbeInfo, error) {
 
 // FilterStreams filters out streams of the given StreamType.
 // Returns a []FFMPEGStreamInfo slice, even if it's empty
-func (info ProbeInfo) FilterStreams(t StreamType) (streams []FFMPEGStreamInfo) {
-	streams = []FFMPEGStreamInfo{}
+func (info ProbeInfo) FilterStreams(t StreamType) []FFMPEGStreamInfo {
+	streams := []FFMPEGStreamInfo{}
 	for _, stream := range info.Streams {
 		if stream.CodecType == t {
 			streams = append(streams, stream)
 		}
 	}
-	return
+	return streams
 }
