@@ -41,7 +41,7 @@ func walkFunc(path string, f os.FileInfo, err error) error {
 }
 
 func TestMain(m *testing.M) {
-	if err := filepath.Walk("testData/iris", walkFunc); err != nil {
+	if err := filepath.Walk("testData", walkFunc); err != nil {
 		panic(err)
 	}
 
