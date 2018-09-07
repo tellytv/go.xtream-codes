@@ -35,30 +35,6 @@ func (t *Timestamp) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Timezone is a helper struct to convert timezone names into time.Location.
-type Timezone struct {
-	time.Location
-}
-
-// MarshalJSON returns the time.Location name as a string.
-func (t Timezone) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + t.Location.String() + `"`), nil
-}
-
-// UnmarshalJSON converts a JSON string to a time.Location.
-func (t *Timezone) UnmarshalJSON(b []byte) error {
-	unquoted, unquotedErr := strconv.Unquote(strings.Replace(string(b), `\`, "", 1))
-	if unquotedErr != nil {
-		return unquotedErr
-	}
-	tz, err := time.LoadLocation(unquoted)
-	if err != nil {
-		return err
-	}
-	t.Location = *tz
-	return nil
-}
-
 // ConvertibleBoolean is a helper type to allow JSON documents using 0/1 or "true" and "false" be converted to bool.
 type ConvertibleBoolean struct {
 	bool
@@ -124,7 +100,7 @@ type ServerInfo struct {
 	Protocol     string    `json:"server_protocol"`
 	TimeNow      string    `json:"time_now"`
 	TimestampNow Timestamp `json:"timestamp_now,string"`
-	Timezone     Timezone  `json:"timezone"`
+	Timezone     string    `json:"timezone"`
 	URL          string    `json:"url"`
 }
 
