@@ -169,40 +169,40 @@ func TestGetStreams(t *testing.T) {
 	}
 }
 
-func TestGetSeries(t *testing.T) {
-	for providerName, expectedContent := range expectedContents["get_series.json"] {
-		t.Run(providerName, func(t *testing.T) {
-			t.Parallel()
-			xc := getClient(t, providerName)
+// func TestGetSeries(t *testing.T) {
+// 	for providerName, expectedContent := range expectedContents["get_series.json"] {
+// 		t.Run(providerName, func(t *testing.T) {
+// 			t.Parallel()
+// 			xc := getClient(t, providerName)
 
-			streams, streamsErr := xc.GetSeries("")
-			if streamsErr != nil {
-				t.Errorf("error getting series: %s", streamsErr)
-				t.Fail()
-				return
-			}
+// 			streams, streamsErr := xc.GetSeries("")
+// 			if streamsErr != nil {
+// 				t.Errorf("error getting series: %s", streamsErr)
+// 				t.Fail()
+// 				return
+// 			}
 
-			t.Logf("Calling json.Marshal for series from %s", providerName)
+// 			t.Logf("Calling json.Marshal for series from %s", providerName)
 
-			marshalled, marshalErr := json.Marshal(streams)
-			if marshalErr != nil {
-				t.Errorf("error marshalling series response back to json: %s", marshalErr)
-				t.Fail()
-				return
-			}
+// 			marshalled, marshalErr := json.Marshal(streams)
+// 			if marshalErr != nil {
+// 				t.Errorf("error marshalling series response back to json: %s", marshalErr)
+// 				t.Fail()
+// 				return
+// 			}
 
-			t.Logf("Calling assert.JSONEq for series from %s", providerName)
+// 			t.Logf("Calling assert.JSONEq for series from %s", providerName)
 
-			t.Logf("%s\n\n\n%s", string(expectedContent), string(marshalled))
+// 			t.Logf("%s\n\n\n%s", string(expectedContent), string(marshalled))
 
-			g := gomega.NewGomegaWithT(t)
+// 			g := gomega.NewGomegaWithT(t)
 
-			g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
+// 			g.Expect(string(expectedContent)).To(gomega.MatchJSON(string(marshalled)))
 
-			t.Logf("Got series from %s successfully!", providerName)
-		})
-	}
-}
+// 			t.Logf("Got series from %s successfully!", providerName)
+// 		})
+// 	}
+// }
 
 func getClient(t *testing.T, providerName string) *XtreamClient {
 	t.Helper()
