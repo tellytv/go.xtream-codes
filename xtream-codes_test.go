@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	gomega "gopkg.in/onsi/gomega.v1"
+	"github.com/onsi/gomega"
 )
 
 var expectedContents = make(map[string]map[string][]byte)

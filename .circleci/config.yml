@@ -7,7 +7,7 @@ jobs:
     working_directory: /go/src/github.com/tellytv/go.xtream-codes
     steps:
       - checkout
-      - run: go get -u gopkg.in/onsi/gomega.v1
+      - run: go get -u github.com/onsi/gomega
       - run: go get -u github.com/alecthomas/gometalinter
       - run: gometalinter --install --config=.gometalinter.json ./...
       - run: go test -v ./...
