@@ -57,7 +57,7 @@ func TestMain(m *testing.M) {
 			action = "auth.json"
 		}
 
-		fmt.Printf("httptest: Serving request for provider %s action %s\n", provider, action)
+		// fmt.Printf("httptest: Serving request for provider %s action %s\n", provider, action)
 
 		w.Write(expectedContents[action][provider])
 	}))
