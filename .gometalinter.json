@@ -29,6 +29,5 @@
   "Sort": [
     "path",
     "linter"
-  ],
-  "Vendor": true
+  ]
 }
