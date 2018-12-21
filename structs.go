@@ -172,7 +172,7 @@ func (ff *FlexFloat) UnmarshalJSON(b []byte) error {
 
     f, err := strconv.ParseFloat(s, 64)
     if err != nil {
-        return err
+        f = 0
     }
     *ff = FlexFloat(f)
     return nil
