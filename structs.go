@@ -147,11 +147,35 @@ type Stream struct {
 	ID                 int        `json:"stream_id"`
 	Name               string     `json:"name"`
 	Number             int        `json:"num"`
-	Rating             string     `json:"rating"`
+	Rating             FlexFloat  `json:"rating"`
 	Rating5based       float64    `json:"rating_5based"`
 	TVArchive          int        `json:"tv_archive"`
 	TVArchiveDuration  *jsonInt   `json:"tv_archive_duration"`
 	Type               string     `json:"stream_type"`
+}
+
+type FlexFloat float64
+
+func (ff *FlexFloat) UnmarshalJSON(b []byte) error {
+    if b[0] != '"' {
+        return json.Unmarshal(b, (*float64)(ff))
+    }
+
+    var s string
+    if err := json.Unmarshal(b, &s); err != nil {
+        return err
+    }
+
+    if len(s) == 0 {
+        s = "0"
+    }
+
+    f, err := strconv.ParseFloat(s, 64)
+    if err != nil {
+        f = 0
+    }
+    *ff = FlexFloat(f)
+    return nil
 }
 
 // SeriesInfo contains information about a TV series.
