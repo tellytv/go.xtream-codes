@@ -157,25 +157,25 @@ type Stream struct {
 type FlexFloat float64
 
 func (ff *FlexFloat) UnmarshalJSON(b []byte) error {
-    if b[0] != '"' {
-        return json.Unmarshal(b, (*float64)(ff))
-    }
+	if b[0] != '"' {
+		return json.Unmarshal(b, (*float64)(ff))
+	}
 
-    var s string
-    if err := json.Unmarshal(b, &s); err != nil {
-        return err
-    }
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
 
-    if len(s) == 0 {
-        s = "0"
-    }
+	if len(s) == 0 {
+		s = "0"
+	}
 
-    f, err := strconv.ParseFloat(s, 64)
-    if err != nil {
-        f = 0
-    }
-    *ff = FlexFloat(f)
-    return nil
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		f = 0
+	}
+	*ff = FlexFloat(f)
+	return nil
 }
 
 // SeriesInfo contains information about a TV series.
@@ -214,7 +214,7 @@ type SeriesEpisode struct {
 		MovieImage   string           `json:"movie_image"`
 		Name         string           `json:"name"`
 		Plot         string           `json:"plot"`
-		Rating       string           `json:"rating"`
+		Rating       FlexFloat        `json:"rating"`
 		ReleaseDate  string           `json:"releasedate"`
 		Video        FFMPEGStreamInfo `json:"video"`
 	} `json:"info"`
