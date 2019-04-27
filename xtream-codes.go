@@ -69,7 +69,7 @@ func NewClient(username, password, baseURL string) (*XtreamClient, error) {
 	return client, nil
 }
 
-// NewClientWithContex returns an initialized XtreamClient with the given values.
+// NewClientWithContext returns an initialized XtreamClient with the given values.
 func NewClientWithContext(ctx context.Context, username, password, baseURL string) (*XtreamClient, error) {
 	c, err := NewClient(username, password, baseURL)
 	c.Context = ctx
