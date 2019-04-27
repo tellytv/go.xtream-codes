@@ -214,7 +214,7 @@ type SeriesEpisode struct {
 		MovieImage   string           `json:"movie_image"`
 		Name         string           `json:"name"`
 		Plot         string           `json:"plot"`
-		Rating       string           `json:"rating"`
+		Rating       FlexFloat           `json:"rating"`
 		ReleaseDate  string           `json:"releasedate"`
 		Video        FFMPEGStreamInfo `json:"video"`
 	} `json:"info"`
