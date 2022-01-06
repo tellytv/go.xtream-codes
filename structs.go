@@ -1,5 +1,8 @@
 package xtreamcodes
 
+// TODO: Add more flex types on IDs if needed
+// for future potential provider issues.
+
 // ServerInfo describes the state of the Xtream-Codes server.
 type ServerInfo struct {
 	HTTPSPort    FlexInt   `json:"https_port,string"`
