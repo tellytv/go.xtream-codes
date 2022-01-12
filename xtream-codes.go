@@ -78,8 +78,8 @@ func NewClientWithContext(ctx context.Context, username, password, baseURL strin
 
 // NewClientWithUserAgent returns an initialized XtreamClient with the given values.
 func NewClientWithUserAgent(ctx context.Context, username, password, baseURL, userAgent string) (*XtreamClient, error) {
+	defaultUserAgent = userAgent
 	c, err := NewClient(username, password, baseURL)
-	c.UserAgent = userAgent
 	c.Context = ctx
 	return c, err
 }
